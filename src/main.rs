@@ -1,6 +1,8 @@
-use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, middleware::Logger, web, App, HttpResponse, HttpServer, Responder};
 use serde::Deserialize;
 pub mod auth;
+pub mod common;
+pub mod users;
 
 #[derive(Debug, Deserialize)]
 pub struct QueryCode {
@@ -28,8 +30,20 @@ async fn azure(query: web::Query<QueryCode>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| App::new().service(azure).service(home))
-        .bind(("127.0.0.1", 8000))?
-        .run()
-        .await
+    if std::env::var_os("RUST_LOG").is_none() {
+        std::env::set_var("RUST_LOG", "actix_web=info");
+    }
+    env_logger::init();
+
+    println!("🚀 Server started successfully");
+
+    HttpServer::new(|| {
+        App::new()
+            .service(azure)
+            .service(home)
+            .wrap(Logger::default())
+    })
+    .bind(("127.0.0.1", 8000))?
+    .run()
+    .await
 }
